@@ -3,7 +3,7 @@ use esp_hal::gpio::{Level, Output, OutputConfig};
 use esp_hal::usb_serial_jtag::UsbSerialJtag;
 use esp_hal::peripherals::Peripherals;
 
-use crate::tools::{wait, blink_once};
+use rc_car::{wait, blink_once};
 
 pub fn init(peripherals: Peripherals) -> ! {
   let mut usb_serial = UsbSerialJtag::new(peripherals.USB_DEVICE);
