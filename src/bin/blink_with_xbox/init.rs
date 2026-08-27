@@ -1,18 +1,9 @@
 use esp_hal::gpio::{Level, Output, OutputConfig};
-use esp_hal::time::{Duration, Instant};
+
 use esp_hal::usb_serial_jtag::UsbSerialJtag;
 use esp_hal::peripherals::Peripherals;
 
-fn blink_once(led: &mut Output<'_>) {
-    led.set_high();
-    let delay_start = Instant::now();
-    while delay_start.elapsed() < Duration::from_millis(10){}
-
-    led.set_low();
-    let delay_start = Instant::now();
-    while delay_start.elapsed() < Duration::from_millis(10){}
-}
-
+use crate::tools::{wait, blink_once};
 
 pub fn init(peripherals: Peripherals) -> ! {
   let mut usb_serial = UsbSerialJtag::new(peripherals.USB_DEVICE);
@@ -22,10 +13,19 @@ pub fn init(peripherals: Peripherals) -> ! {
   let mut green_led = Output::new(peripherals.GPIO6, Level::Low, output_config);
   let mut red_led = Output::new(peripherals.GPIO7, Level::Low, output_config);
 
+  let mut incorrect_led = Output::new(peripherals.GPIO15, Level::Low, output_config);
+  let mut correct_led = Output::new(peripherals.GPIO16, Level::Low, output_config);
+
   // boot signature
   blink_once(&mut green_led);
   blink_once(&mut red_led);
   blink_once(&mut blue_led);
+
+  blink_once(&mut incorrect_led);
+  blink_once(&mut correct_led);
+  wait(500);
+  blink_once(&mut incorrect_led);
+  blink_once(&mut correct_led);
 
 
   loop {
