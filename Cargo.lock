@@ -755,6 +755,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "genius-core"
+version = "0.1.0"
+
+[[package]]
 name = "hash32"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1013,6 +1017,7 @@ dependencies = [
  "esp-bootloader-esp-idf",
  "esp-hal",
  "esp-println",
+ "genius-core",
  "log",
 ]
 

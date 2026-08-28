@@ -12,6 +12,7 @@ use esp_hal::main;
 use esp_hal::clock::CpuClock;
 
 mod blink_with_xbox;
+mod genius;
 // This creates a default app-descriptor required by the esp-idf bootloader.
 // For more information see: <https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/app_image_format.html#application-description>
 esp_bootloader_esp_idf::esp_app_desc!();
@@ -48,6 +49,7 @@ fn main() -> ! {
     let _ = peripherals.GPIO36;
     let _ = peripherals.GPIO37;
 
-    blink_with_xbox::init::init(peripherals)
+    // blink_with_xbox::init::init(peripherals)
+    genius::init::init(peripherals)
     // for inspiration have a look at the examples at https://github.com/esp-rs/esp-hal/tree/esp-hal-v1.1.0/examples
 }
