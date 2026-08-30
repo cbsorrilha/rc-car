@@ -12,14 +12,16 @@ pub fn init(peripherals: Peripherals) -> ! {
   let mut blue_led = Output::new(peripherals.GPIO5, Level::Low, output_config);
   let mut green_led = Output::new(peripherals.GPIO6, Level::Low, output_config);
   let mut red_led = Output::new(peripherals.GPIO7, Level::Low, output_config);
-
-  let mut incorrect_led = Output::new(peripherals.GPIO15, Level::Low, output_config);
-  let mut correct_led = Output::new(peripherals.GPIO16, Level::Low, output_config);
+  let mut yellow_led = Output::new(peripherals.GPIO15, Level::Low, output_config);
+  
+  let mut incorrect_led = Output::new(peripherals.GPIO16, Level::Low, output_config);
+  let mut correct_led = Output::new(peripherals.GPIO17, Level::Low, output_config);
 
   // boot signature
   blink_once(&mut green_led);
   blink_once(&mut red_led);
   blink_once(&mut blue_led);
+  blink_once(&mut yellow_led);
 
   blink_once(&mut incorrect_led);
   blink_once(&mut correct_led);
@@ -39,6 +41,9 @@ pub fn init(peripherals: Peripherals) -> ! {
             }
             b'B' => {
                 blink_once(&mut blue_led);
+            }
+            b'Y' => {
+                blink_once(&mut yellow_led);
             }
             _ => {}
         }
