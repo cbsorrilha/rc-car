@@ -1,14 +1,14 @@
-# Spec: Three-Color Genius Game
+# Spec: Four-Color Genius Game
 
 Status: approved by Cesar on `2026-08-27` — ready for technical planning; implementation has not started.
 
 ## Objective
 
-Build a playable three-color Genius game on the existing `rc-car` ESP32-S3 prototype. The ESP32 presents a growing LED sequence and the player reproduces it with an Xbox controller. The challenge exists primarily to practice Rust domain modeling, modules, state transitions, ownership, embedded boundaries, and automated tests.
+Build a playable four-color Genius game on the existing `rc-car` ESP32-S3 prototype. The ESP32 presents a growing LED sequence and the player reproduces it with an Xbox controller. The challenge exists primarily to practice Rust domain modeling, modules, state transitions, ownership, embedded boundaries, and automated tests.
 
 The accepted user-visible result is:
 
-> A player can start the firmware, observe a growing sequence of blue, green, and red LEDs, reproduce it with X, A, and B, receive distinct success or error feedback, and reset the game at any time with Y.
+> A player can start the firmware, observe a growing sequence of blue, green, red, and yellow LEDs, reproduce it with X, A, B, and Y, receive distinct success or error feedback, and reset the game at any time with Start.
 
 ## Controls And Hardware Contract
 
@@ -17,9 +17,10 @@ The accepted user-visible result is:
 | X | `B` | Blue |
 | A | `G` | Green |
 | B | `R` | Red |
-| Y | `Y` | Reset |
+| Y | `Y` | Yellow |
+| Start | `S` | Reset |
 
-The existing blue, green, and red LEDs are sequence LEDs. The two additional LEDs are referred to by role, not color:
+The existing blue, green, red, and yellow LEDs are sequence LEDs. The two additional LEDs are referred to by role, not color:
 
 - **correct LED:** round completed successfully;
 - **error LED:** wrong input.
@@ -30,7 +31,7 @@ Existing GPIO assignments must be preserved unless Cesar explicitly approves a w
 
 ### Startup
 
-1. The three sequence LEDs blink together three times using `100 ms` on and `100 ms` off.
+1. The four sequence LEDs blink together three times using `100 ms` on and `100 ms` off.
 2. All sequence LEDs remain off for `1,000 ms`.
 3. The game clears prior progress, creates a one-color sequence, and starts the first round.
 
@@ -41,8 +42,8 @@ The correct and error LEDs are not part of the startup animation.
 1. Each round replays the entire existing sequence in order.
 2. A successfully completed round appends exactly one randomly selected color; repeated adjacent colors are allowed.
 3. Each sequence LED remains on for `500 ms` and off for `250 ms` before the next color.
-4. X, A, and B inputs are ignored during playback.
-5. Y resets the game even during playback.
+4. X, A, B, and Y inputs are ignored during playback.
+5. Start resets the game even during playback.
 
 ### Player Input
 
@@ -64,17 +65,17 @@ The correct and error LEDs are not part of the startup animation.
 
 1. The error LED blinks three times using `100 ms` on and `100 ms` off.
 2. The game enters a game-over state.
-3. X, A, and B are ignored while game-over is active.
-4. The game remains in game-over until Y is pressed.
+3. X, A, B, and Y are ignored while game-over is active.
+4. The game remains in game-over until Start is pressed.
 
 ### Reset
 
-Y may reset the game from playback, player input, success feedback, error feedback, or game-over.
+Start may reset the game from playback, player input, success feedback, error feedback, or game-over.
 
 Reset performs the same visible sequence as startup:
 
 1. immediately abandon the current sequence and input position;
-2. blink the three sequence LEDs together three times;
+2. blink the four sequence LEDs together three times;
 3. leave them off for `1,000 ms`;
 4. create a new one-color sequence and begin again.
 
@@ -84,12 +85,12 @@ The implementation must make these states observable in the pure game model, eve
 
 | State | Responsibility | Accepted inputs |
 |---|---|---|
-| Startup | Run the startup/reset signal and create round one | Y restarts startup |
-| Playing sequence | Present the stored sequence | Y resets; color input ignored |
-| Awaiting input | Compare player colors in order | X/A/B compare; Y resets |
-| Round success | Signal success and extend the sequence | Y resets |
-| Game over | Signal failure on entry, then wait without progressing | Y resets; color input ignored |
-| Game completed | Preserve the completed 10-color result and wait | Y resets; color input ignored |
+| Startup | Run the startup/reset signal and create round one | Start restarts startup |
+| Playing sequence | Present the stored sequence | Start resets; color input ignored |
+| Awaiting input | Compare player colors in order | X/A/B/Y compare; Start resets |
+| Round success | Signal success and extend the sequence | Start resets |
+| Game over | Signal failure on entry, then wait without progressing | Start resets; color input ignored |
+| Game completed | Preserve the completed 10-color result and wait | Start resets; color input ignored |
 
 Hardware timing must not be embedded in the pure state-transition logic. The model should emit intents such as “show blue,” “signal success,” or “reset”; the firmware adapter performs GPIO and delays.
 
@@ -97,7 +98,7 @@ Hardware timing must not be embedded in the pure state-transition logic. The mod
 
 ## Randomness And Determinism
 
-- Production chooses each appended color from blue, green, or red with equal eligibility.
+- Production chooses each appended color from blue, green, red, or yellow with equal eligibility.
 - The pure game model must accept the next generated color from outside rather than directly depending on ESP32 randomness.
 - If a generated color is supplied when the sequence already contains `10` colors, the event is ignored and the state remains unchanged. V1 does not require an error return for this invalid request.
 - Host tests provide deterministic colors so every sequence can be reproduced.
@@ -173,6 +174,7 @@ pub enum Color {
     Blue,
     Green,
     Red,
+    Yellow,
 }
 
 pub enum Input {
@@ -211,7 +213,7 @@ The pure core must have deterministic unit tests covering at least:
 - round completion preserves the prior sequence and appends one supplied color;
 - wrong input transitions directly to game-over and exposes that entry once for error feedback;
 - color input is ignored during playback, game-over, and game-completed;
-- reset clears sequence progress and input position from every state;
+- Start reset clears sequence progress and input position from every state;
 - repeated adjacent colors are accepted;
 - completing the 10-color sequence enters game-completed without appending another color;
 - supplying another generated color at the supported sequence capacity leaves the state unchanged and never panics or corrupts state.
@@ -228,10 +230,10 @@ Tests must not sleep, access GPIO, read serial bytes, or depend on real randomne
 
 ### Always
 
-- Preserve the existing GPIO assignments unless the spec is explicitly revised.
+- Preserve the existing GPIO assignments and add the available yellow LED as a sequence LED, unless the spec is explicitly revised.
 - Keep game decisions independent from GPIO, serial, delays, and randomness.
-- Ignore X/A/B during sequence playback, game-over, and game-completed.
-- Accept Y as reset from every state.
+- Ignore X/A/B/Y during sequence playback, game-over, and game-completed.
+- Accept Start as reset from every state.
 - Run format, host tests, target check, and Clippy before declaring completion.
 - Let Cesar write the implementation; tutoring should use progressive hints and review his attempts.
 
@@ -247,26 +249,26 @@ Tests must not sleep, access GPIO, read serial bytes, or depend on real randomne
 
 - Add motor control, direct Xbox Bluetooth, sound, display, scoring persistence, networking, or multiplayer to this feature.
 - Count color input received during playback or after game-over.
-- Block Y reset until an animation finishes.
+- Block Start reset until an animation finishes.
 - Use real delays or hardware in host unit tests.
 - Hide failing checks, remove tests to make verification pass, or claim embedded correctness from host tests alone.
 
 ## Acceptance Criteria
 
-1. On boot, the three sequence LEDs blink together exactly three times, remain off for `1,000 ms`, and then begin a one-color round.
+1. On boot, the four sequence LEDs blink together exactly three times, remain off for `1,000 ms`, and then begin a one-color round.
 2. Sequence playback preserves order and uses `500 ms` on plus `250 ms` off per color.
-3. X, A, and B map to blue, green, and red respectively through serial commands `B`, `G`, and `R`.
+3. X, A, B, and Y map to blue, green, red, and yellow respectively through serial commands `B`, `G`, `R`, and `Y`; Start maps to reset through `S`.
 4. Color input during playback is ignored and does not alter the expected input position.
 5. Each accepted player color lights the corresponding sequence LED once.
 6. Correct partial input advances exactly one position.
 7. Completing a round blinks the correct LED three times, appends exactly one color, and replays the complete extended sequence.
-8. Wrong input blinks the error LED three times and leaves the game waiting for Y without extending the sequence.
-9. Y interrupts and resets the game from every state, including animations, then follows the startup flow.
+8. Wrong input blinks the error LED three times and leaves the game waiting for Start without extending the sequence.
+9. Start interrupts and resets the game from every state, including animations, then follows the startup flow.
 10. The sequence may contain the same color consecutively.
-11. Completing a sequence of exactly 10 colors blinks the correct LED three times, does not append an eleventh color, and waits for Y in game-completed.
+11. Completing a sequence of exactly 10 colors blinks the correct LED three times, does not append an eleventh color, and waits for Start in game-completed.
 12. The pure game model passes deterministic host tests without ESP32 hardware, sleeps, serial input, or real randomness.
 13. The firmware passes formatting, target compilation, and Clippy checks.
-14. On hardware, an end-to-end demonstration completes at least three rounds, demonstrates one wrong input, and demonstrates Y reset during playback, game-over, and game-completed.
+14. On hardware, an end-to-end demonstration completes at least three rounds, demonstrates one wrong input, and demonstrates Start reset during playback, game-over, and game-completed.
 15. No motor-control, Bluetooth, audio, display, persistent score, or networking behavior is added.
 
 ## Expected Artifacts
@@ -274,7 +276,7 @@ Tests must not sleep, access GPIO, read serial bytes, or depend on real randomne
 - This approved specification.
 - A dependency-free pure game-core crate with host tests.
 - ESP32 Genius orchestration under `src/bin/genius/`.
-- Serial decoding for `B`, `G`, `R`, and `Y`.
+- Serial decoding for `B`, `G`, `R`, `Y`, and `S`.
 - A concise README update or demonstration note recording the verified hardware behavior.
 
 ## Assessment Dimensions
@@ -291,9 +293,9 @@ The tutor reviews the finished challenge separately for:
 
 ## Approved Decisions
 
-1. V1 supports a maximum sequence of `10` colors. Completing round 10 signals success and waits for Y without appending another color.
+1. V1 supports a maximum sequence of `10` colors. Completing round 10 signals success and waits for Start without appending another color.
 2. Pure logic lives in the internal, dependency-free `crates/genius-core` crate so it can be tested independently from `esp-hal`.
-3. Startup and reset blink only the three sequence LEDs; the dedicated correct and error LEDs remain off.
+3. Startup and reset blink only the four sequence LEDs; the dedicated correct and error LEDs remain off.
 4. Sequence and player-color flashes use `500 ms` on and `250 ms` off. Startup, correct, and error signals use `100 ms` on and `100 ms` off.
 5. `RoundError` is not a separate state; the transition into game-over triggers error feedback exactly once.
 6. Supplying a generated color at the 10-color capacity is ignored without returning an error.
