@@ -88,16 +88,18 @@ The implementation must make these states observable in the pure game model, eve
 | Playing sequence | Present the stored sequence | Y resets; color input ignored |
 | Awaiting input | Compare player colors in order | X/A/B compare; Y resets |
 | Round success | Signal success and extend the sequence | Y resets |
-| Round error | Signal failure | Y resets |
-| Game over | Wait without progressing | Y resets; color input ignored |
+| Game over | Signal failure on entry, then wait without progressing | Y resets; color input ignored |
 | Game completed | Preserve the completed 10-color result and wait | Y resets; color input ignored |
 
 Hardware timing must not be embedded in the pure state-transition logic. The model should emit intents such as “show blue,” “signal success,” or “reset”; the firmware adapter performs GPIO and delays.
+
+`RoundError` is intentionally not a separate state. A wrong color transitions directly from awaiting input to game over. Entering game over is the one-time signal for the firmware adapter to blink the error LED; remaining in game over must not repeat that feedback. This keeps the persistent state distinct from the transition effect without adding a redundant intermediate state.
 
 ## Randomness And Determinism
 
 - Production chooses each appended color from blue, green, or red with equal eligibility.
 - The pure game model must accept the next generated color from outside rather than directly depending on ESP32 randomness.
+- If a generated color is supplied when the sequence already contains `10` colors, the event is ignored and the state remains unchanged. V1 does not require an error return for this invalid request.
 - Host tests provide deterministic colors so every sequence can be reproduced.
 - No external random-number dependency may be added without approval.
 
@@ -207,12 +209,12 @@ The pure core must have deterministic unit tests covering at least:
 - correct partial input advances only the expected position;
 - a full correct sequence completes the round;
 - round completion preserves the prior sequence and appends one supplied color;
-- wrong input enters the error/game-over flow;
+- wrong input transitions directly to game-over and exposes that entry once for error feedback;
 - color input is ignored during playback, game-over, and game-completed;
 - reset clears sequence progress and input position from every state;
 - repeated adjacent colors are accepted;
 - completing the 10-color sequence enters game-completed without appending another color;
-- reaching the supported sequence capacity never panics or corrupts state.
+- supplying another generated color at the supported sequence capacity leaves the state unchanged and never panics or corrupts state.
 
 Tests must not sleep, access GPIO, read serial bytes, or depend on real randomness.
 
@@ -293,3 +295,5 @@ The tutor reviews the finished challenge separately for:
 2. Pure logic lives in the internal, dependency-free `crates/genius-core` crate so it can be tested independently from `esp-hal`.
 3. Startup and reset blink only the three sequence LEDs; the dedicated correct and error LEDs remain off.
 4. Sequence and player-color flashes use `500 ms` on and `250 ms` off. Startup, correct, and error signals use `100 ms` on and `100 ms` off.
+5. `RoundError` is not a separate state; the transition into game-over triggers error feedback exactly once.
+6. Supplying a generated color at the 10-color capacity is ignored without returning an error.
