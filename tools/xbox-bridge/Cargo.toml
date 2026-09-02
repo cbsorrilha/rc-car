@@ -1,0 +1,9 @@
+[package]
+name = "xbox-bridge"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+gamecontroller = "0.8.10"
+gilrs = "0.11.2"
+serialport = "4.9.0"

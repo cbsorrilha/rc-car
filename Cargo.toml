@@ -4,6 +4,10 @@ name         = "rc-car"
 rust-version = "1.88"
 version      = "0.1.0"
 
+[workspace]
+members = ["crates/genius-core", "tools/xbox-bridge"]
+resolver = "3"
+
 [[bin]]
 name = "rc-car"
 path = "./src/bin/main.rs"
