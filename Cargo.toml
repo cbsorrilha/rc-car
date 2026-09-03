@@ -5,7 +5,8 @@ rust-version = "1.88"
 version      = "0.1.0"
 
 [workspace]
-members = ["crates/genius-core", "tools/xbox-bridge"]
+members = ["crates/genius-core"]
+exclude = ["tools/xbox-bridge"]
 resolver = "3"
 
 [[bin]]
