@@ -4,6 +4,8 @@ use esp_hal::{
     usb_serial_jtag::UsbSerialJtag,
 };
 
+use esp_hal::rng::Rng;
+
 use genius_core::{Color, Event, SEQ_MAX_LENGTH, State, Status, state_machine};
 use rc_car::{blink_once, blink_once_for, wait};
 
@@ -24,6 +26,13 @@ fn map_color_to_led<'call, 'leds, 'pins>(
         Color::Green => map.green_led,
         Color::Yellow => map.yellow_led,
     }
+}
+
+fn get_random_color() -> Color {
+    let colors = [Color::Green, Color::Blue, Color::Red, Color::Yellow];
+    let rng = Rng::new();
+    let number = rng.random() % 4;
+    return colors[number as usize];
 }
 
 pub fn init(peripherals: Peripherals) -> ! {
@@ -67,7 +76,7 @@ pub fn init(peripherals: Peripherals) -> ! {
                 "Initializing Round number {}",
                 state.current_sequence_size()
             );
-            state = state_machine(state, Event::ColorGiven(Color::Blue));
+            state = state_machine(state, Event::ColorGiven(get_random_color()));
             state = state_machine(state, Event::GameStarted);
 
             // Round Starting Signal
