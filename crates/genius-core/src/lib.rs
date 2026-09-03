@@ -1,24 +1,6 @@
 #![no_std]
-const SEQ_MAX_LENGTH: usize = 10;
+pub const SEQ_MAX_LENGTH: usize = 10;
 
-/**
- * Vamos pensar em como atender a spec gerada pela IA. Ela propôs essa crate separada.
- * o game loop basico é o seguinte:
- * - jogo iniciado
- * - mostra primeira sequencia (b,g,r)
- * - espera length input do usuário
- * - usuário acertou
- *    - feedback de acertou
- *    - acrescenta 1 na sequencia (b,g,r,b)
- *    - recomeça loop
- * - usuário errou
- *    - feedback de errou
- *    - estado de erro até y
- *
- * {
- *  sequence: []Color
- * }
- */
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub enum Status {
     Startup,         // aceita apenas colorgiven e gamestarted
@@ -42,12 +24,13 @@ pub enum Color {
     Red,
     Green,
     Blue,
+    Yellow,
 }
 
 #[derive(Debug, Clone)]
 pub struct State {
     status: Status,
-    sequence: [Option<Color>; 10],
+    sequence: [Option<Color>; SEQ_MAX_LENGTH],
     current_sequence_size: usize,
     next_player_try: usize,
 }
@@ -65,7 +48,7 @@ impl State {
         &self.status
     }
 
-    pub fn sequence(&self) -> [Option<Color>; 10] {
+    pub fn sequence(&self) -> [Option<Color>; SEQ_MAX_LENGTH] {
         self.sequence
     }
 
@@ -154,9 +137,7 @@ pub fn state_machine(state: State, event: Event) -> State {
                 };
             }
 
-            if !state.sequence.is_empty()
-                && state.next_player_try == state.current_sequence_size - 1
-            {
+            if state.next_player_try == state.current_sequence_size - 1 {
                 return State {
                     status: Status::RoundSuccess,
                     next_player_try: 0,
@@ -190,13 +171,13 @@ mod tests {
     fn test_state_getters() {
         let initial_state = State {
             status: Status::Startup,
-            sequence: [None; 10],
+            sequence: [None; SEQ_MAX_LENGTH],
             current_sequence_size: 1,
             next_player_try: 2,
         };
 
         let desired_state_status = Status::Startup;
-        let desired_state_sequence = [None; 10];
+        let desired_state_sequence = [None; SEQ_MAX_LENGTH];
         let desired_state_current_sequence_size = 1;
         let desired_state_next_player_try = 2;
 
@@ -231,12 +212,12 @@ mod tests {
     fn test_color_given_event() {
         let initial_state = State {
             status: Status::Startup,
-            sequence: [None; 10],
+            sequence: [None; SEQ_MAX_LENGTH],
             current_sequence_size: 0,
             next_player_try: 0,
         };
 
-        let mut seq = [None; 10];
+        let mut seq = [None; SEQ_MAX_LENGTH];
         seq[0] = core::prelude::v1::Some(Color::Green);
 
         let desired_state = State {
@@ -271,7 +252,7 @@ mod tests {
 
     #[test]
     fn test_color_given_event_with_full_sequence() {
-        let mut seq = [None; 10];
+        let mut seq = [None; SEQ_MAX_LENGTH];
         seq[0] = core::prelude::v1::Some(Color::Green);
         seq[1] = core::prelude::v1::Some(Color::Green);
         seq[2] = core::prelude::v1::Some(Color::Green);
@@ -322,7 +303,7 @@ mod tests {
 
     #[test]
     fn test_color_given_event_with_full_sequence_add_do_nothing() {
-        let mut seq = [None; 10];
+        let mut seq = [None; SEQ_MAX_LENGTH];
         seq[0] = core::prelude::v1::Some(Color::Green);
         seq[1] = core::prelude::v1::Some(Color::Green);
         seq[2] = core::prelude::v1::Some(Color::Green);
@@ -373,7 +354,7 @@ mod tests {
 
     #[test]
     fn test_start_event() {
-        let mut seq = [None; 10];
+        let mut seq = [None; SEQ_MAX_LENGTH];
         seq[0] = core::prelude::v1::Some(Color::Green);
 
         let initial_state = State {
@@ -415,7 +396,7 @@ mod tests {
 
     #[test]
     fn test_sequence_playback_completed() {
-        let mut seq = [None; 10];
+        let mut seq = [None; SEQ_MAX_LENGTH];
         seq[0] = core::prelude::v1::Some(Color::Green);
 
         let initial_state = State {
@@ -457,7 +438,7 @@ mod tests {
 
     #[test]
     fn test_color_pressed_event_round_fail() {
-        let mut seq = [None; 10];
+        let mut seq = [None; SEQ_MAX_LENGTH];
         seq[0] = core::prelude::v1::Some(Color::Green);
 
         let initial_state = State {
@@ -499,7 +480,7 @@ mod tests {
 
     #[test]
     fn test_color_pressed_event_round_success() {
-        let mut seq = [None; 10];
+        let mut seq = [None; SEQ_MAX_LENGTH];
         seq[0] = core::prelude::v1::Some(Color::Green);
 
         let initial_state = State {
@@ -541,7 +522,7 @@ mod tests {
 
     #[test]
     fn test_partial_success_keepawaiting_input() {
-        let mut seq = [None; 10];
+        let mut seq = [None; SEQ_MAX_LENGTH];
         seq[0] = core::prelude::v1::Some(Color::Green);
         seq[1] = core::prelude::v1::Some(Color::Red);
 
@@ -584,7 +565,7 @@ mod tests {
 
     #[test]
     fn test_color_pressed_event_game_success() {
-        let mut seq = [None; 10];
+        let mut seq = [None; SEQ_MAX_LENGTH];
         seq[SEQ_MAX_LENGTH - 1] = core::prelude::v1::Some(Color::Green); //Last in sequence
 
         let initial_state = State {
@@ -648,7 +629,7 @@ mod tests {
             state_machine(awaiting_input_state, ColorPressed(Color::Green));
         let resulting_state = state_machine(first_color_pressed_state, ColorPressed(Color::Blue));
 
-        let mut desired_seq = [None; 10];
+        let mut desired_seq = [None; SEQ_MAX_LENGTH];
         desired_seq[0] = core::prelude::v1::Some(Color::Green);
         desired_seq[1] = core::prelude::v1::Some(Color::Blue);
         let desired_state = State {
@@ -682,7 +663,7 @@ mod tests {
 
     #[test]
     fn test_color_pressed_ignore_states() {
-        let mut seq = [None; 10];
+        let mut seq = [None; SEQ_MAX_LENGTH];
         seq[0] = core::prelude::v1::Some(Color::Green); //Last in sequence
 
         let cases = [
@@ -761,10 +742,10 @@ mod tests {
 
     #[test]
     fn test_reset_requested_from_states() {
-        let clean_seq = [None; 10];
-        let mut one_seq = [None; 10];
+        let clean_seq = [None; SEQ_MAX_LENGTH];
+        let mut one_seq = [None; SEQ_MAX_LENGTH];
         one_seq[0] = core::prelude::v1::Some(Color::Green);
-        let mut two_seq = [None; 10];
+        let mut two_seq = [None; SEQ_MAX_LENGTH];
         two_seq[0] = core::prelude::v1::Some(Color::Green);
         two_seq[1] = core::prelude::v1::Some(Color::Red);
 
@@ -837,7 +818,7 @@ mod tests {
         for (name, initial_state) in cases {
             let desired_state = State {
                 status: Status::Startup,
-                sequence: [None; 10],
+                sequence: [None; SEQ_MAX_LENGTH],
                 current_sequence_size: 0,
                 next_player_try: 0,
             };
@@ -872,7 +853,7 @@ mod tests {
         // ResetRequested
         // SequencePlaybackCompleted
 
-        let clean_seq = [None; 10];
+        let clean_seq = [None; SEQ_MAX_LENGTH];
 
         let cases = [
             ("color_pressed", Event::ColorPressed(Color::Green)),
@@ -920,7 +901,7 @@ mod tests {
         // GameStarted
         // ColorGiven
         // ColorPressed
-        let mut two_seq = [None; 10];
+        let mut two_seq = [None; SEQ_MAX_LENGTH];
         two_seq[0] = core::prelude::v1::Some(Color::Green);
         two_seq[1] = core::prelude::v1::Some(Color::Red);
 
@@ -967,7 +948,7 @@ mod tests {
         // GameStarted
         // ColorGiven
         // SequencePlaybackCompleted
-        let mut two_seq = [None; 10];
+        let mut two_seq = [None; SEQ_MAX_LENGTH];
         two_seq[0] = core::prelude::v1::Some(Color::Green);
         two_seq[1] = core::prelude::v1::Some(Color::Red);
 
@@ -1018,7 +999,7 @@ mod tests {
         // ColorPressed
         // SequencePlaybackCompleted
 
-        let mut two_seq = [None; 10];
+        let mut two_seq = [None; SEQ_MAX_LENGTH];
         two_seq[0] = core::prelude::v1::Some(Color::Green);
         two_seq[1] = core::prelude::v1::Some(Color::Red);
 
@@ -1068,7 +1049,7 @@ mod tests {
         // ColorGiven
         // ColorPressed
         // SequencePlaybackCompleted
-        let mut two_seq = [None; 10];
+        let mut two_seq = [None; SEQ_MAX_LENGTH];
         two_seq[0] = core::prelude::v1::Some(Color::Green);
         two_seq[1] = core::prelude::v1::Some(Color::Red);
 
@@ -1120,7 +1101,7 @@ mod tests {
         // ColorGiven
         // ColorPressed
         // SequencePlaybackCompleted
-        let mut two_seq = [None; 10];
+        let mut two_seq = [None; SEQ_MAX_LENGTH];
         two_seq[0] = core::prelude::v1::Some(Color::Green);
         two_seq[1] = core::prelude::v1::Some(Color::Red);
 
